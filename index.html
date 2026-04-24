@@ -1,105 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Skill2Income AI</title>
+  <title>Skill2Income AI</title>
 
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-}
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
 
-body {
-  font-family: Arial, sans-serif;
-  background: #f3f4f6;
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
 
-.container {
-  width: 100%;
-  max-width: 420px;
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0px 5px 20px rgba(0,0,0,0.1);
-}
+    h1 {
+      text-align: center;
+      background: linear-gradient(90deg, #6a5acd, #8a2be2);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+    }
 
-.header {
-  background: linear-gradient(90deg, #6366f1, #9333ea);
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  margin-bottom: 20px;
-}
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
 
-input {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(90deg, #6a5acd, #8a2be2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
 
-button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: linear-gradient(90deg, #6366f1, #9333ea);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
+    .result-card {
+      background: white;
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
 
-.loading {
-  text-align: center;
-  margin-top: 10px;
-}
+    ul {
+      padding-left: 20px;
+    }
 
-.result-card {
-  background: #f9fafb;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 15px;
-  border: 1px solid #ddd;
-}
-</style>
-
+  </style>
 </head>
+
 <body>
 
 <div class="container">
-  <div class="header">
-    <h2>🚀 Skill2Income AI</h2>
-    <p>Turn your skills into income</p>
+
+  <div class="card">
+    <h1>🚀 Skill2Income AI</h1>
+
+    <input id="skills" placeholder="Enter your skills (e.g. Python)">
+    <input id="interests" placeholder="Enter your interests (e.g. Freelancing)">
+    <input id="time" placeholder="Time available (e.g. 2 hours)">
+
+    <button onclick="generateIncomePlan()">Generate Income Plan</button>
   </div>
 
-  <input id="skills" placeholder="Enter your skills (e.g. Python)">
-  <input id="interests" placeholder="Enter your interests (e.g. Freelancing)">
-  <input id="time" placeholder="Time available (e.g. 2 hours)">
-
-  <button onclick="generatePlan()">Generate Income Plan</button>
-
-  <div id="loading" class="loading"></div>
+  <!-- RESULTS SHOW HERE -->
   <div id="results"></div>
+
 </div>
 
 <script>
-async function generatePlan() {
+async function generateIncomePlan() {
+
   const skills = document.getElementById("skills").value;
   const interests = document.getElementById("interests").value;
   const time = document.getElementById("time").value;
 
-  const loading = document.getElementById("loading");
   const resultsDiv = document.getElementById("results");
 
-  loading.innerHTML = "⏳ Generating...";
-  resultsDiv.innerHTML = "";
+  // 🔄 Loading state
+  resultsDiv.innerHTML = "<p>⏳ Generating ideas...</p>";
 
   try {
     const response = await fetch("https://skill2income-api.onrender.com/generate-income-plan", {
@@ -112,30 +107,32 @@ async function generatePlan() {
 
     const data = await response.json();
 
-    loading.innerHTML = "";
+    resultsDiv.innerHTML = "";
 
-    if (data.result) {
-      data.result.forEach(item => {
-        const card = `
-          <div class="result-card">
-            <h3>${item.title}</h3>
-            <p>${item.description}</p>
-            <ul>
-              ${item.steps.map(step => `<li>${step}</li>`).join("")}
-            </ul>
-            <b>💰 ${item.earnings}</b><br>
-            <small>Monthly: ${item.monthly_estimate}</small>
-          </div>
-        `;
-        resultsDiv.innerHTML += card;
-      });
-    } else {
-      resultsDiv.innerHTML = "❌ Error generating results";
+    if (data.error) {
+      resultsDiv.innerHTML = "<p style='color:red;'>❌ API Error</p>";
+      return;
     }
 
+    data.result.forEach(item => {
+
+      const card = document.createElement("div");
+      card.className = "result-card";
+
+      card.innerHTML = `
+        <h3>${item.title}</h3>
+        <p>${item.description}</p>
+        <ul>
+          ${item.steps.map(step => `<li>${step}</li>`).join("")}
+        </ul>
+        <p><strong>${item.earnings}</strong></p>
+      `;
+
+      resultsDiv.appendChild(card);
+    });
+
   } catch (error) {
-    loading.innerHTML = "";
-    resultsDiv.innerHTML = "❌ Failed to connect to API";
+    resultsDiv.innerHTML = "<p style='color:red;'>❌ Failed to connect to API</p>";
   }
 }
 </script>
