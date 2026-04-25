@@ -30,10 +30,6 @@ body { margin:0; font-family:'Inter'; background:#020617; color:white;}
   justify-content: space-between;  align-items: center;
 }
 
-.chat-menu {position: absolute; right: 10px; top: 35px; background: #1f2937; border-radius: 6px; 
-  display: none; min-width: 100px;  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-  z-index: 9999;
-}
 .chat-menu { position:absolute; right:5px; top:28px;  background:#1f2937;
   border-radius:6px; display:none; z-index:9999;
 }
@@ -228,11 +224,17 @@ btn.onclick = (e) => {
 
 // MESSAGE
 function addMessage(text,type){
- const div=document.createElement("div");
- div.className="message "+type;
- div.innerHTML=text;
- chat.appendChild(div);
- chat.scrollTop=chat.scrollHeight;
+  const div=document.createElement("div");
+  div.className="message "+type;
+  div.innerHTML=text;
+
+  const id = Date.now();
+  div.setAttribute("data-id", id);
+
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+
+  return id; // 🔥 IMPORTANT
 }
 
 // QUICK FILL
@@ -257,35 +259,59 @@ async function newChat(){
 
 // SEND MESSAGE (🔥 PREMIUM UI)
 async function sendMessage(){
- if(!auth.currentUser) return alert("Login first");
 
- const text=userInput.value.trim();
- if(!text) return;
+  if(!auth.currentUser) return alert("Login first");
 
- if(!currentChatId) await newChat();
+  const sendBtn = document.querySelector(".send");
+  sendBtn.disabled = true;
 
- addMessage(text,"user");
- messages.push({role:"user",text});
- userInput.value="";
+  const text = userInput.value.trim();
+  if(!text){
+    sendBtn.disabled = false;
+    return;
+  }
 
- addMessage("Thinking...","ai");
+  if(!currentChatId) await newChat();
 
- const res=await fetch("https://skill2income-api.onrender.com/generate-income-plan",{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-   skills:text,
-   interests:text,
-   time:"2 hours",
-   history:messages.slice(-5)
-  })
- });
+  addMessage(text,"user");
+  messages.push({role:"user",text});
+  userInput.value="";
 
- const data=await res.json();
- window.currentPlans = data.result;
- document.querySelector(".ai:last-child").remove();
+  const loadingId = addMessage("⏳ Thinking... generating your plan","ai");
 
- data.result.forEach((p, i)=>{
+  try{
+    const res = await fetch("https://skill2income-api.onrender.com/generate-income-plan",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        skills:text,
+        interests:text,
+        time:"2 hours",
+        history:messages.slice(-5)
+      })
+    });
+
+    if(!res.ok){
+      removeMessage(loadingId);
+      addMessage("❌ Server error. Try again.","ai");
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+
+    if(!data.result || !Array.isArray(data.result)){
+      removeMessage(loadingId);
+      addMessage("⚠️ Invalid response. Try again.","ai");
+      sendBtn.disabled = false;
+      return;
+    }
+
+    removeMessage(loadingId);
+
+    window.currentPlans = data.result;
+
+data.result.forEach((p, i)=>{
 
   const steps = p.steps ? p.steps.map(s => "• " + s).join("<br>") : "";
   const tools = p.tools_needed ? p.tools_needed.join(", ") : "";
@@ -326,20 +352,33 @@ async function sendMessage(){
 
   <p><b>🔗 Start Here:</b><br>${getSmartLinks(p.title)}</p>
 
-  <button onclick='reusePlan("${p.title}")'>🔁 Reuse</button>
+  <button onclick='reusePlan(${i})'>🔁 Reuse</button>
   <button onclick='savePlan(${i})'>💾 Save</button>
   <button onclick='copyPlan(${i})'>📋 Copy</button>
   <button onclick="exportPDF(this)">📄 PDF</button>
- 
 
 </div>
 `;
 
   addMessage(html,"ai");
   messages.push({role:"ai",text:html});
-});
-saveChat();
+
+      
+    });
+
+    saveChat();
+    sendBtn.disabled = false;
+
+  } catch(err){
+    console.error(err);
+    removeMessage(loadingId);
+    addMessage("❌ Something went wrong. Try again.","ai");
+    sendBtn.disabled = false;
+  }
 }
+
+
+
 
 // LOAD CHAT
 function loadChat(id){
@@ -405,9 +444,6 @@ function goDashboard(){
 }
 
 // INIT
-window.onload=()=>{
- addMessage("💡 Example: I know Python, want freelancing","ai");
-};
 function copyPlan(index){
   const plan = window.currentPlans[index];
 
@@ -448,9 +484,29 @@ function logout(){
 function showUpgrade(){
   alert("💎 Premium coming soon!\n\n✔ Unlimited plans\n✔ Advanced AI\n✔ Export features");
 }
+function reusePlan(index){
+  if(!window.currentPlans){
+    alert("⚠️ No plan available yet");
+    return;
+  }
+
+  const plan = window.currentPlans[index];
+
+  const text = `
+${plan.title}
+${plan.description}
+${plan.steps ? plan.steps.join(" ") : ""}
+`;
+
+  document.getElementById("userInput").value = text;
+  document.getElementById("userInput").focus();
+}
+function removeMessage(id){
+  const el = document.querySelector(`[data-id='${id}']`);
+  if(el) el.remove();
+}
+
 </script>
-
-
 
 </body>
 </html>
