@@ -119,8 +119,10 @@ userInput.addEventListener("keypress", e=>{
 
 // LOGIN
 function login(){
- const provider=new firebase.auth.GoogleAuthProvider();
- auth.signInWithPopup(provider);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then(res => console.log("Logged in:", res.user.email))
+    .catch(err => console.error("Login error:", err));
 }
 
 // AUTH
